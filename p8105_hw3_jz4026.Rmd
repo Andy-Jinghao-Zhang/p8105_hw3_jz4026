@@ -1,0 +1,125 @@
+---
+title: "Homework 3"
+author: "Jinghao Zhang"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Problem 1
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+library(patchwork)
+```
+
+```{r}
+data("ny_noaa")
+
+data1 = ny_noaa
+
+dim(data1)
+names(data1)
+head(data1)
+summary(data1)
+```
+
+The dataset contains 2595176 observations and 7 variables from 747 weather stations between 1981 and 2010. The variables include precipitation, snowfall, snow depth, maximum temperature, and minimum temperature. Each row has observations at one station on a specific date. There are many missing values, especially for temperature.
+
+```{r}
+data2 = data1 |>
+  mutate(
+    year = lubridate::year(date),
+    month = lubridate::month(date),
+    day = lubridate::day(date),
+    tmax = as.numeric(tmax) / 10,
+    tmin = as.numeric(tmin) / 10,
+    prcp = prcp / 10
+  )
+
+head(data2)
+summary(data2)
+```
+
+```{r}
+data2 |>
+  count(snow, sort = TRUE) |>
+  head(10)
+```
+
+The most commonly observed value is 0. Maybe because most days did not have snow.
+
+```{r}
+data3 = data2 |>
+  filter(month == 1 | month == 7) |>
+  group_by(id, year, month) |>
+  summarize(
+    avg_temp = mean(tmax, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  filter(!is.nan(avg_temp))
+
+plot1 = data3 |>
+  ggplot(aes(x = year, y = avg_temp, group = id)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~month, ncol = 2,
+             labeller = as_labeller(c("1" = "January",
+                                     "7" = "July"))) +
+  labs(
+    title = "Average Maximum Temperature",
+    x = "Year",
+    y = "Temperature (°C)"
+  ) +
+  theme_minimal()
+
+plot1
+```
+
+The average max temperature in January is lower than July. January temperatures are mostly around -10 to 10 degrees. July temperatures are mostly around 20 to 35 degrees. There are a few outliers.
+
+
+```{r}
+plot2 = data2 |>
+  filter(!is.na(tmax), !is.na(tmin)) |>
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_bin2d() +
+  labs(
+    title = "Maximum vs Minimum Temperature",
+    x = "Minimum Temperature (°C)",
+    y = "Maximum Temperature (°C)"
+  ) +
+  theme_minimal()
+
+
+plot3 = data2 |>
+  filter(snow > 0, snow < 100) |>
+  ggplot(aes(x = factor(year), y = snow)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  scale_x_discrete(
+    breaks = as.character(seq(1981, 2010, 5))
+  ) +
+  labs(
+    title = "Snowfall Distribution by Year",
+    x = "Year",
+    y = "Snowfall (mm)"
+  ) +
+  theme_minimal()
+
+
+plot2 + plot3
+```
+
+
+
+
+
+
+# Problem 2
+
+# Problem 3
