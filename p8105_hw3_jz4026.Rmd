@@ -243,6 +243,7 @@ plot5 = data10 |>
 
 plot5
 ```
+
 Overall total activity tends to decrease with age. The decreasing tendency is stronger in 'less than high school' group.
 
 ```{r}
@@ -274,6 +275,165 @@ plot6 = data11 |>
 
 plot6
 ```
+
 Activity levels stay relatively high during the day and decrease in the evening. Three education groups have similar patterns. 
 
 # Problem 3
+```{r}
+data12 = read_csv("data/citibike/Jan 2020 Citi.csv")
+data13 = read_csv("data/citibike/Jan 2024 Citi.csv")
+data14 = read_csv("data/citibike/July 2020 Citi.csv")
+data15 = read_csv("data/citibike/July 2024 Citi.csv")
+
+dim(data12)
+dim(data13)
+dim(data14)
+dim(data15)
+
+names(data12)
+names(data13)
+names(data14)
+names(data15)
+```
+```{r}
+data16 = bind_rows(
+  data12 |> mutate(year = 2020, month = "January"),
+  data13 |> mutate(year = 2024, month = "January"),
+  data14 |> mutate(year = 2020, month = "July"),
+  data15 |> mutate(year = 2024, month = "July")
+) |>
+  mutate(
+    year = factor(year),
+    month = factor(month, levels = c("January", "July"))
+  )
+
+dim(data16)
+head(data16)
+```
+```{r}
+glimpse(data16)
+
+colSums(is.na(data16))
+
+sum(duplicated(data16$ride_id))
+
+unique(data16$rideable_type)
+unique(data16$weekdays)
+unique(data16$member_casual)
+
+summary(data16$duration)
+```
+```{r}
+data17 = data16 |>
+  mutate(
+    rideable_type = factor(rideable_type),
+    weekdays = factor(
+      weekdays,
+      levels = c("Monday", "Tuesday", "Wednesday",
+                 "Thursday", "Friday", "Saturday", "Sunday")
+    ),
+    member_casual = factor(
+      member_casual,
+      levels = c("member", "casual")
+    ),
+    year = factor(year),
+    month = factor(
+      month,
+      levels = c("January", "July")
+    )
+  )
+
+dim(data17)
+glimpse(data17)
+```
+The final dataset contains 99485 rides from January and July of 2020 and 2024. There are 9 variables, which are ride_id, rideable_type, weekdays, duration, start_station_name, end_station_name, member_casual, year, and month. 
+
+```{r}
+data18 = data17 |>
+  count(year, month, member_casual) |>
+  pivot_wider(
+    names_from = member_casual,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  mutate(total = member + casual)
+
+knitr::kable(
+  data18,
+  col.names = c("Year", "Month", "Member", "Casual", "Total"),
+  caption = "Number of Citi Bike Rides by Year, Month, and Membership"
+)
+```
+
+The total numbers of rides keep increasing between the two years. July has more rides than January for both years.
+
+```{r}
+data19 = data17 |>
+  filter(year == "2024", month == "July") |>
+  filter(!is.na(start_station_name)) |>
+  count(start_station_name, sort = TRUE) |>
+  slice_head(n = 5)
+
+knitr::kable(
+  data19,
+  col.names = c("Starting Station", "Number of Rides"),
+  caption = "Top 5 Starting Stations in July 2024"
+)
+```
+
+```{r}
+data20 = data17 |>
+  group_by(year, month, weekdays) |>
+  summarise(
+    median_duration = median(duration, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+head(data20)
+```
+
+```{r}
+plot7 = data20 |>
+  ggplot(aes(x = weekdays, y = median_duration,
+             group = month, color = month)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~year, ncol = 2) +
+  labs(
+    title = "Median Ride Duration by Weekday, Month and Year",
+    x = "Day of Week",
+    y = "Median Ride Duration (minutes)",
+    color = "Month"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+plot7
+```
+
+Median ride duration in July are higher than January for both years. Weekends tend to have longer median ride duration.
+
+```{r}
+plot8 = data17 |>
+  filter(year == "2024") |>
+  ggplot(aes(x = member_casual, y = duration,
+             fill = rideable_type)) +
+  geom_boxplot(outlier.alpha = 0.1) +
+  facet_wrap(~month, ncol = 2) +
+  labs(
+    title = "Ride Duration by Month, Membership and Bike Type in 2024",
+    x = "Membership Status",
+    y = "Ride Duration (minutes)",
+    fill = "Bike Type"
+  ) +
+  theme_minimal()
+
+plot8
+```
+
+Casual riders and July tend to have longer ride duration.
+
+
+
